@@ -2,6 +2,7 @@
 name = "crossterm-simple-event"
 version = "0.1.0"
 edition = "2024"
+description = "Library to turn crossterm events into simple strings"
 authors = ["wyvernbw <calinpiros10@gmail.com>"]
 license = "MIT"
 
