@@ -1,4 +1,4 @@
-use compact_str::CompactString;
+pub use compact_str::CompactString;
 use crossterm::event::{Event, KeyCode, KeyModifiers, MediaKeyCode, ModifierKeyCode};
 
 pub trait CrosstermSimpleEvent {
