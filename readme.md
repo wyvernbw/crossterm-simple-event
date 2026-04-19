@@ -54,3 +54,8 @@ match ev.simple().as_str() {
     _ => print("naughty naughty"),
 }
 ```
+
+## AI Policy
+
+This repo, small as it is, does **not** contain or accept LLM generated code.
+Remember to never offload your creativity to the machine.

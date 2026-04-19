@@ -1,3 +1,55 @@
+//! # `crossterm-simple-event`
+//!
+//! Turn complex `crossterm::event::Event` into nice keybind strings.
+//!
+//! ## Modifier order
+//!
+//! Modifier order is `ctrl+alt+shift+hyper+super+meta+_`. This means that,
+//! for example, `ctrl+shift+c` will always appear as `"ctrl+shift+c"` and **not**
+//! as `"shift+ctrl+c"`. Same with the other modifiers
+//!
+//! ## Special key encoding
+//!
+//! - [`KeyCode::Backspace`] = `"backspace"`
+//! - [`KeyCode::Enter`] = `"enter"`
+//! - [`KeyCode::Left`] = `"left"`
+//! - [`KeyCode::Right`] = `"right"`
+//! - [`KeyCode::Up`] = `"up"`
+//! - [`KeyCode::Down`] = `"down"`
+//! - [`KeyCode::Home`] = `"home"`
+//! - [`KeyCode::End`] = `"end"`
+//! - [`KeyCode::PageUp`] = `"pageup"`
+//! - [`KeyCode::PageDown`] = `"pagedown"`
+//! - [`KeyCode::Tab`] = `"tab"`
+//! - [`KeyCode::BackTab`] = `"backtab"`
+//! - [`KeyCode::Delete`] = `"del"`
+//! - [`KeyCode::Insert`] = `"ins"`
+//! - [`KeyCode::F`] = `"f{n}"`
+//! - [`KeyCode::Null`] = `"null"` (i don't even know what this is)
+//! - [`KeyCode::Esc`] = `"esc"`
+//! - [`KeyCode::CapsLock`] = `"capslock"`
+//! - [`KeyCode::ScrollLock`] = `"scrlck"`
+//! - [`KeyCode::NumLock`] = `"numlock"`
+//! - [`KeyCode::PrintScreen`] = `"prntscrn"`
+//! - [`KeyCode::Pause`] = `"pause"`
+//! - [`KeyCode::Menu`] = `"menu"`
+//!
+//! ## Media key encoding
+//!
+//! - [`MediaKeyCode::Play`] = `"menu"`
+//! - [`MediaKeyCode::Pause`] = `"pause"`
+//! - [`MediaKeyCode::PlayPause`] = `"playpause"`
+//! - [`MediaKeyCode::Reverse`] = `"reverse"`
+//! - [`MediaKeyCode::Stop`] = `"stop"`
+//! - [`MediaKeyCode::FastForward`] = `"ff"`
+//! - [`MediaKeyCode::Rewind`] = `"rewind"`
+//! - [`MediaKeyCode::TrackNext`] = `"next"`
+//! - [`MediaKeyCode::TrackPrevious`] = `"prev"`
+//! - [`MediaKeyCode::Record`] = `"rec"`
+//! - [`MediaKeyCode::LowerVolume`] = `"voldown"`
+//! - [`MediaKeyCode::RaiseVolume`] = `"volup"`
+//! - [`MediaKeyCode::MuteVolume`] = `"mute"`
+
 pub use compact_str::CompactString;
 use crossterm::event::{Event, KeyCode, KeyModifiers, MediaKeyCode, ModifierKeyCode};
 
@@ -6,6 +58,9 @@ pub trait CrosstermSimpleEvent {
 }
 
 impl CrosstermSimpleEvent for Event {
+    /// Turn [`crossterm::event::Event`] into a string.
+    ///
+    /// see crate level docs for specific keybinds.
     fn simple(&self) -> CompactString {
         let Some(key) = self.as_key_event() else {
             return "".into();
@@ -93,8 +148,8 @@ impl CrosstermSimpleEvent for Event {
                 MediaKeyCode::TrackNext => res.push_str("next"),
                 MediaKeyCode::TrackPrevious => res.push_str("prev"),
                 MediaKeyCode::Record => res.push_str("rec"),
-                MediaKeyCode::LowerVolume => res.push_str("volup"),
-                MediaKeyCode::RaiseVolume => res.push_str("voldown"),
+                MediaKeyCode::LowerVolume => res.push_str("voldown"),
+                MediaKeyCode::RaiseVolume => res.push_str("volup"),
                 MediaKeyCode::MuteVolume => res.push_str("mute"),
             },
             KeyCode::Modifier(modifier) => match modifier {
