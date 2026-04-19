@@ -38,6 +38,7 @@ impl CrosstermSimpleEvent for Event {
         }
         match key.code {
             KeyCode::Char(c) => {
+                let c = c.to_ascii_lowercase();
                 res.push(c);
             }
             KeyCode::Backspace => res.push_str("backspace"),
@@ -56,8 +57,21 @@ impl CrosstermSimpleEvent for Event {
             KeyCode::Insert => res.push_str("ins"),
             KeyCode::F(n) => {
                 res.push('f');
-                let n = b'0' + n;
-                res.push(n as char);
+                match n {
+                    0..=9 => {
+                        let n = b'0' + n;
+                        res.push(n as char);
+                    }
+                    10..=99 => {
+                        let first = n / 10;
+                        let last = n % 10;
+                        let first = b'0' + first;
+                        let last = b'0' + last;
+                        res.push(first as char);
+                        res.push(last as char);
+                    }
+                    _ => return "".into(),
+                }
             }
             KeyCode::Null => res.push_str("null"),
             KeyCode::Esc => res.push_str("esc"),
@@ -99,10 +113,10 @@ impl CrosstermSimpleEvent for Event {
         res
     }
 }
-
 #[cfg(test)]
 mod tests {
     use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers};
+    use crossterm::event::{MediaKeyCode, ModifierKeyCode};
 
     use crate::CrosstermSimpleEvent;
 
@@ -115,12 +129,149 @@ mod tests {
             state: KeyEventState::NONE,
         });
         assert_eq!(ev.simple(), "ctrl+c");
+
         let ev = Event::Key(KeyEvent {
             code: KeyCode::Char('d'),
             modifiers: KeyModifiers::CONTROL | KeyModifiers::SHIFT,
             kind: KeyEventKind::Press,
             state: KeyEventState::NONE,
         });
-        assert_eq!(ev.simple(), "ctrl+shift+d")
+        assert_eq!(ev.simple(), "ctrl+shift+d");
+    }
+
+    #[test]
+    fn special_keys() {
+        let cases = vec![
+            (KeyCode::Enter, "enter"),
+            (KeyCode::Backspace, "backspace"),
+            (KeyCode::Tab, "tab"),
+            (KeyCode::BackTab, "backtab"),
+            (KeyCode::Delete, "del"),
+            (KeyCode::Insert, "ins"),
+            (KeyCode::Esc, "esc"),
+            (KeyCode::Home, "home"),
+            (KeyCode::End, "end"),
+            (KeyCode::Left, "left"),
+            (KeyCode::Right, "right"),
+            (KeyCode::Up, "up"),
+            (KeyCode::Down, "down"),
+            (KeyCode::PageUp, "pageup"),
+            (KeyCode::PageDown, "pagedown"),
+        ];
+
+        for (code, expected) in cases {
+            let ev = Event::Key(KeyEvent {
+                code,
+                modifiers: KeyModifiers::empty(),
+                kind: KeyEventKind::Press,
+                state: KeyEventState::NONE,
+            });
+            assert_eq!(ev.simple(), expected);
+        }
+    }
+
+    #[test]
+    fn function_keys() {
+        for n in 1..=12 {
+            let ev = Event::Key(KeyEvent {
+                code: KeyCode::F(n),
+                modifiers: KeyModifiers::empty(),
+                kind: KeyEventKind::Press,
+                state: KeyEventState::NONE,
+            });
+            assert_eq!(ev.simple(), format!("f{}", n));
+        }
+    }
+
+    #[test]
+    fn modifier_keys() {
+        let cases = vec![
+            (ModifierKeyCode::LeftShift, "shift"),
+            (ModifierKeyCode::RightShift, "shift"),
+            (ModifierKeyCode::LeftControl, "ctrl"),
+            (ModifierKeyCode::RightControl, "ctrl"),
+            (ModifierKeyCode::LeftAlt, "alt"),
+            (ModifierKeyCode::RightAlt, "alt"),
+            (ModifierKeyCode::LeftSuper, "super"),
+            (ModifierKeyCode::RightSuper, "super"),
+            (ModifierKeyCode::LeftMeta, "meta"),
+            (ModifierKeyCode::RightMeta, "meta"),
+        ];
+
+        for (mod_code, expected) in cases {
+            let ev = Event::Key(KeyEvent {
+                code: KeyCode::Modifier(mod_code),
+                modifiers: KeyModifiers::empty(),
+                kind: KeyEventKind::Press,
+                state: KeyEventState::NONE,
+            });
+            assert_eq!(ev.simple(), expected);
+        }
+    }
+
+    #[test]
+    fn media_keys() {
+        let cases = vec![
+            (MediaKeyCode::Play, "play"),
+            (MediaKeyCode::Pause, "pause"),
+            (MediaKeyCode::PlayPause, "playpause"),
+            (MediaKeyCode::Stop, "stop"),
+            (MediaKeyCode::FastForward, "ff"),
+            (MediaKeyCode::Rewind, "rewind"),
+            (MediaKeyCode::TrackNext, "next"),
+            (MediaKeyCode::TrackPrevious, "prev"),
+            (MediaKeyCode::MuteVolume, "mute"),
+        ];
+
+        for (media_code, expected) in cases {
+            let ev = Event::Key(KeyEvent {
+                code: KeyCode::Media(media_code),
+                modifiers: KeyModifiers::empty(),
+                kind: KeyEventKind::Press,
+                state: KeyEventState::NONE,
+            });
+            assert_eq!(ev.simple(), expected);
+        }
+    }
+
+    #[test]
+    fn multiple_modifiers_order() {
+        // Tests that modifiers appear in the correct order: ctrl → alt → shift → hyper → super → meta
+        let ev = Event::Key(KeyEvent {
+            code: KeyCode::Char('s'),
+            modifiers: KeyModifiers::CONTROL
+                | KeyModifiers::ALT
+                | KeyModifiers::SHIFT
+                | KeyModifiers::SUPER,
+            kind: KeyEventKind::Press,
+            state: KeyEventState::NONE,
+        });
+        assert_eq!(ev.simple(), "ctrl+alt+shift+super+s");
+    }
+
+    #[test]
+    fn non_key_events() {
+        // Mouse, Resize, Focus, etc. should return empty string
+        let ev = Event::Resize(80, 24);
+        assert_eq!(ev.simple(), "");
+
+        let ev = Event::Mouse(crossterm::event::MouseEvent {
+            kind: crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left),
+            column: 0,
+            row: 0,
+            modifiers: KeyModifiers::empty(),
+        });
+        assert_eq!(ev.simple(), "");
+    }
+
+    #[test]
+    fn shift_with_special_key() {
+        let ev = Event::Key(KeyEvent {
+            code: KeyCode::Enter,
+            modifiers: KeyModifiers::SHIFT,
+            kind: KeyEventKind::Press,
+            state: KeyEventState::NONE,
+        });
+        assert_eq!(ev.simple(), "shift+enter");
     }
 }
