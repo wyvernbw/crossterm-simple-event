@@ -1,104 +1,102 @@
-mod keybinds;
-
-use crossterm::event::{Event, KeyModifiers, ModifierKeyCode};
-
-use crate::keybinds::*;
+use compact_str::CompactString;
+use crossterm::event::{Event, KeyCode, KeyModifiers, MediaKeyCode, ModifierKeyCode};
 
 pub trait CrosstermSimpleEvent {
-    fn simple(&self) -> &'static str;
-}
-
-const fn key_index(
-    is_shift: bool,
-    is_ctrl: bool,
-    is_alt: bool,
-    is_super: bool,
-    is_hyper: bool,
-    is_meta: bool,
-    offset: usize,
-) -> usize {
-    let mut idx = 0x0u16;
-    if is_shift {
-        idx |= SHIFT;
-    }
-    if is_ctrl {
-        idx |= CTRL;
-    }
-    if is_alt {
-        idx |= ALT;
-    }
-    if is_hyper {
-        idx |= HYPER;
-    }
-    if is_meta {
-        idx |= META;
-    }
-    if is_super {
-        idx |= META
-    }
-    let idx = idx as usize;
-
-    idx | offset
-}
-
-const fn modifiers_to_idx(mods: KeyModifiers) -> usize {
-    let is_shift = mods.contains(KeyModifiers::SHIFT);
-    let is_ctrl = mods.contains(KeyModifiers::CONTROL);
-    let is_alt = mods.contains(KeyModifiers::ALT);
-    let is_super = mods.contains(KeyModifiers::SUPER);
-    let is_meta = mods.contains(KeyModifiers::META);
-    let is_hyper = mods.contains(KeyModifiers::HYPER);
-    key_index(is_shift, is_ctrl, is_alt, is_super, is_hyper, is_meta, 0)
+    fn simple(&self) -> CompactString;
 }
 
 impl CrosstermSimpleEvent for Event {
-    fn simple(&self) -> &'static str {
+    fn simple(&self) -> CompactString {
         let Some(key) = self.as_key_event() else {
-            return "";
+            return "".into();
         };
-        let base = modifiers_to_idx(key.modifiers);
-        match key.code {
-            crossterm::event::KeyCode::Char(c) => {
-                let offset = letter_idx(c);
-                let idx = base | offset;
-                KEYBINDS[idx]
-            }
-            crossterm::event::KeyCode::Backspace => todo!(),
-            crossterm::event::KeyCode::Enter => todo!(),
-            crossterm::event::KeyCode::Left => todo!(),
-            crossterm::event::KeyCode::Right => todo!(),
-            crossterm::event::KeyCode::Up => todo!(),
-            crossterm::event::KeyCode::Down => todo!(),
-            crossterm::event::KeyCode::Home => todo!(),
-            crossterm::event::KeyCode::End => todo!(),
-            crossterm::event::KeyCode::PageUp => todo!(),
-            crossterm::event::KeyCode::PageDown => todo!(),
-            crossterm::event::KeyCode::Tab => todo!(),
-            crossterm::event::KeyCode::BackTab => todo!(),
-            crossterm::event::KeyCode::Delete => todo!(),
-            crossterm::event::KeyCode::Insert => todo!(),
-            crossterm::event::KeyCode::F(_) => todo!(),
-            crossterm::event::KeyCode::Null => todo!(),
-            crossterm::event::KeyCode::Esc => todo!(),
-            crossterm::event::KeyCode::CapsLock => todo!(),
-            crossterm::event::KeyCode::ScrollLock => todo!(),
-            crossterm::event::KeyCode::NumLock => todo!(),
-            crossterm::event::KeyCode::PrintScreen => todo!(),
-            crossterm::event::KeyCode::Pause => todo!(),
-            crossterm::event::KeyCode::Menu => todo!(),
-            crossterm::event::KeyCode::KeypadBegin => todo!(),
-            crossterm::event::KeyCode::Media(media_key_code) => todo!(),
-            crossterm::event::KeyCode::Modifier(modifier) => match modifier {
-                ModifierKeyCode::LeftShift | ModifierKeyCode::RightShift => "shift",
-                ModifierKeyCode::LeftControl | ModifierKeyCode::RightControl => "ctrl",
-                ModifierKeyCode::LeftAlt | ModifierKeyCode::RightAlt => "alt",
-                ModifierKeyCode::LeftSuper | ModifierKeyCode::RightSuper => "super",
-                ModifierKeyCode::LeftHyper | ModifierKeyCode::RightHyper => "hyper",
-                ModifierKeyCode::LeftMeta | ModifierKeyCode::RightMeta => "meta",
-                ModifierKeyCode::IsoLevel3Shift => "shift",
-                ModifierKeyCode::IsoLevel5Shift => "shift",
-            },
+        let mods = key.modifiers;
+        let is_shift = mods.contains(KeyModifiers::SHIFT);
+        let is_ctrl = mods.contains(KeyModifiers::CONTROL);
+        let is_alt = mods.contains(KeyModifiers::ALT);
+        let is_super = mods.contains(KeyModifiers::SUPER);
+        let is_meta = mods.contains(KeyModifiers::META);
+        let is_hyper = mods.contains(KeyModifiers::HYPER);
+        let mut res = CompactString::const_new("");
+        if is_ctrl {
+            res.push_str("ctrl+");
         }
+        if is_alt {
+            res.push_str("alt+");
+        }
+        if is_shift {
+            res.push_str("shift+");
+        }
+        if is_hyper {
+            res.push_str("hyper+");
+        }
+        if is_super {
+            res.push_str("super+");
+        }
+        if is_meta {
+            res.push_str("meta+");
+        }
+        match key.code {
+            KeyCode::Char(c) => {
+                res.push(c);
+            }
+            KeyCode::Backspace => res.push_str("backspace"),
+            KeyCode::Enter => res.push_str("enter"),
+            KeyCode::Left => res.push_str("left"),
+            KeyCode::Right => res.push_str("right"),
+            KeyCode::Up => res.push_str("up"),
+            KeyCode::Down => res.push_str("down"),
+            KeyCode::Home => res.push_str("home"),
+            KeyCode::End => res.push_str("end"),
+            KeyCode::PageUp => res.push_str("pageup"),
+            KeyCode::PageDown => res.push_str("pagedown"),
+            KeyCode::Tab => res.push_str("tab"),
+            KeyCode::BackTab => res.push_str("backtab"),
+            KeyCode::Delete => res.push_str("del"),
+            KeyCode::Insert => res.push_str("ins"),
+            KeyCode::F(n) => {
+                res.push('f');
+                let n = b'0' + n;
+                res.push(n as char);
+            }
+            KeyCode::Null => res.push_str("null"),
+            KeyCode::Esc => res.push_str("esc"),
+            KeyCode::CapsLock => res.push_str("capslock"),
+            KeyCode::ScrollLock => res.push_str("scrlck"),
+            KeyCode::NumLock => res.push_str("numlock"),
+            KeyCode::PrintScreen => res.push_str("prntscrn"),
+            KeyCode::Pause => res.push_str("pause"),
+            KeyCode::Menu => res.push_str("menu"),
+            KeyCode::KeypadBegin => return "".into(),
+            KeyCode::Media(media_key_code) => match media_key_code {
+                MediaKeyCode::Play => res.push_str("play"),
+                MediaKeyCode::Pause => res.push_str("pause"),
+                MediaKeyCode::PlayPause => res.push_str("playpause"),
+                MediaKeyCode::Reverse => res.push_str("reverse"),
+                MediaKeyCode::Stop => res.push_str("stop"),
+                MediaKeyCode::FastForward => res.push_str("ff"),
+                MediaKeyCode::Rewind => res.push_str("rewind"),
+                MediaKeyCode::TrackNext => res.push_str("next"),
+                MediaKeyCode::TrackPrevious => res.push_str("prev"),
+                MediaKeyCode::Record => res.push_str("rec"),
+                MediaKeyCode::LowerVolume => res.push_str("volup"),
+                MediaKeyCode::RaiseVolume => res.push_str("voldown"),
+                MediaKeyCode::MuteVolume => res.push_str("mute"),
+            },
+            KeyCode::Modifier(modifier) => match modifier {
+                ModifierKeyCode::LeftShift | ModifierKeyCode::RightShift => return "shift".into(),
+                ModifierKeyCode::LeftControl | ModifierKeyCode::RightControl => {
+                    return "ctrl".into();
+                }
+                ModifierKeyCode::LeftAlt | ModifierKeyCode::RightAlt => return "alt".into(),
+                ModifierKeyCode::LeftSuper | ModifierKeyCode::RightSuper => return "super".into(),
+                ModifierKeyCode::LeftHyper | ModifierKeyCode::RightHyper => return "hyper".into(),
+                ModifierKeyCode::LeftMeta | ModifierKeyCode::RightMeta => return "meta".into(),
+                ModifierKeyCode::IsoLevel3Shift => return "shift".into(),
+                ModifierKeyCode::IsoLevel5Shift => return "shift".into(),
+            },
+        };
+        res
     }
 }
 
